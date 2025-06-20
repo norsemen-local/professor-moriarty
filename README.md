@@ -94,6 +94,14 @@ The following servers and clients are defined within this academic infrastructur
     *   **Operating System:** Debian 12
     *   **Zone:** Infrastructure Zone
     *   **Documentation Notes:** Syslog-ng/Rsyslog configuration, log rotation, secure storage, integration with SIEM (conceptual).
+*   **engine-01 (Application Engine Server):**
+    *   **Operating System:** Debian 12
+    *   **Zone:** Servers Zone
+    *   **Documentation Notes:** Hosts specific application engine or backend processing services, security hardening, monitoring.
+*   **kubernetes-01 (Kubernetes Node):**
+    *   **Operating System:** Debian 12
+    *   **Zone:** Servers Zone
+    *   **Documentation Notes:** Can serve as a Kubernetes control plane or worker node for container orchestration (potentially standalone or supplemental to OpenShift), security configurations specific to K8s.
 
 ### 5.4. Palo Alto Networks Appliances
 
