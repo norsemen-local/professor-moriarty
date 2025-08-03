@@ -1,0 +1,68 @@
+---
+# Main Ansible Playbook
+# NIST 800-53 Compliance and Zero Trust Architecture
+# Academic Infrastructure as Code Project
+
+- name: Configure Active Directory Servers
+  hosts: active_directory_servers
+  become: yes
+  roles:
+    - common
+    - windows_hardening
+    - active_directory
+    - monitoring
+    - security
+
+- name: Configure Infrastructure Windows Servers
+  hosts: infrastructure_windows_servers
+  become: yes
+  roles:
+    - common
+    - windows_hardening
+    - infrastructure_windows
+    - monitoring
+    - security
+
+- name: Configure Infrastructure Linux Servers
+  hosts: infrastructure_linux_servers
+  become: yes
+  roles:
+    - common
+    - linux_hardening
+    - infrastructure_linux
+    - monitoring
+    - security
+
+- name: Configure Windows Clients
+  hosts: windows_clients
+  become: yes
+  roles:
+    - common
+    - windows_client_hardening
+    - monitoring
+    - security
+
+- name: Configure Linux Clients
+  hosts: linux_clients
+  become: yes
+  roles:
+    - common
+    - linux_client_hardening
+    - monitoring
+    - security
+
+- name: Configure Palo Alto Networks Firewall
+  hosts: palo_alto_firewall
+  become: yes
+  roles:
+    - common
+    - palo_alto_hardening
+    - monitoring
+    - security
+
+- name: Final Security Validation
+  hosts: all
+  become: yes
+  roles:
+    - security_validation
+    - compliance_check 

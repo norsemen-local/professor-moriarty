@@ -1,0 +1,275 @@
+---
+# Security Role Tasks
+# NIST 800-53 Compliance and Zero Trust Architecture
+
+- name: Configure password policy (Linux)
+  template:
+    src: login.defs.j2
+    dest: /etc/login.defs
+    owner: root
+    group: root
+    mode: '0644'
+  when: ansible_os_family != "Windows"
+
+- name: Configure password policy (Windows)
+  win_regedit:
+    path: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System
+    name: MinimumPasswordLength
+    data: 12
+    type: dword
+  when: ansible_os_family == "Windows"
+
+- name: Configure account lockout policy (Windows)
+  win_regedit:
+    path: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System
+    name: LockoutBadCount
+    data: 3
+    type: dword
+  when: ansible_os_family == "Windows"
+
+- name: Configure SSH security (Linux)
+  template:
+    src: sshd_config.j2
+    dest: /etc/ssh/sshd_config
+    owner: root
+    group: root
+    mode: '0600'
+  when: ansible_os_family != "Windows"
+
+- name: Restart SSH service (Linux)
+  service:
+    name: ssh
+    state: restarted
+  when: ansible_os_family != "Windows"
+
+- name: Configure Windows Firewall
+  win_firewall_rule:
+    name: "{{ item.name }}"
+    localport: "{{ item.port }}"
+    action: allow
+    direction: in
+    protocol: tcp
+    state: present
+  loop:
+    - { name: "SSH", port: "22" }
+    - { name: "RDP", port: "3389" }
+    - { name: "HTTP", port: "80" }
+    - { name: "HTTPS", port: "443" }
+  when: ansible_os_family == "Windows"
+
+- name: Configure UFW firewall (Linux)
+  ufw:
+    rule: allow
+    port: "{{ item }}"
+    proto: tcp
+  loop:
+    - "22"
+    - "80"
+    - "443"
+  when: ansible_os_family != "Windows"
+
+- name: Enable UFW firewall (Linux)
+  ufw:
+    state: enabled
+    policy: deny
+  when: ansible_os_family != "Windows"
+
+- name: Configure auditd rules (Linux)
+  template:
+    src: audit.rules.j2
+    dest: /etc/audit/rules.d/audit.rules
+    owner: root
+    group: root
+    mode: '0640'
+  when: ansible_os_family != "Windows"
+
+- name: Restart auditd service (Linux)
+  service:
+    name: auditd
+    state: restarted
+  when: ansible_os_family != "Windows"
+
+- name: Configure Windows audit policy
+  win_audit_policy:
+    category: "{{ item }}"
+    audit_type: success,failure
+  loop:
+    - "Account Logon"
+    - "Account Management"
+    - "Directory Service Access"
+    - "Logon Events"
+    - "Object Access"
+    - "Policy Change"
+    - "Privilege Use"
+    - "Process Tracking"
+    - "System Events"
+  when: ansible_os_family == "Windows"
+
+- name: Configure SELinux (Linux)
+  seboolean:
+    name: "{{ item }}"
+    state: on
+    persistent: yes
+  loop:
+    - "httpd_can_network_connect"
+    - "httpd_can_network_relay"
+    - "httpd_exec_mem"
+  when: ansible_os_family != "Windows"
+
+- name: Configure AppArmor (Linux)
+  template:
+    src: apparmor.conf.j2
+    dest: /etc/apparmor.d/usr.sbin.sshd
+    owner: root
+    group: root
+    mode: '0644'
+  when: ansible_os_family != "Windows"
+
+- name: Configure Windows Defender
+  win_regedit:
+    path: HKLM:\SOFTWARE\Policies\Microsoft\Windows Defender
+    name: DisableRealtimeMonitoring
+    data: 0
+    type: dword
+  when: ansible_os_family == "Windows"
+
+- name: Configure TLS settings (Windows)
+  win_regedit:
+    path: HKLM:\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\TLS 1.2\Server
+    name: Enabled
+    data: 1
+    type: dword
+  when: ansible_os_family == "Windows"
+
+- name: Disable weak protocols (Windows)
+  win_regedit:
+    path: HKLM:\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\SSL 2.0\Server
+    name: Enabled
+    data: 0
+    type: dword
+  when: ansible_os_family == "Windows"
+
+- name: Configure system hardening (Linux)
+  template:
+    src: sysctl.conf.j2
+    dest: /etc/sysctl.d/99-security.conf
+    owner: root
+    group: root
+    mode: '0644'
+  when: ansible_os_family != "Windows"
+
+- name: Apply sysctl settings (Linux)
+  sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    state: present
+    reload: yes
+  loop:
+    - { name: "net.ipv4.conf.all.accept_redirects", value: "0" }
+    - { name: "net.ipv4.conf.default.accept_redirects", value: "0" }
+    - { name: "net.ipv4.conf.all.rp_filter", value: "1" }
+    - { name: "net.ipv4.conf.default.rp_filter", value: "1" }
+    - { name: "net.ipv4.tcp_syncookies", value: "1" }
+    - { name: "kernel.randomize_va_space", value: "2" }
+  when: ansible_os_family != "Windows"
+
+- name: Configure fail2ban (Linux)
+  template:
+    src: fail2ban.conf.j2
+    dest: /etc/fail2ban/jail.local
+    owner: root
+    group: root
+    mode: '0644'
+  when: ansible_os_family != "Windows"
+
+- name: Restart fail2ban service (Linux)
+  service:
+    name: fail2ban
+    state: restarted
+  when: ansible_os_family != "Windows"
+
+- name: Configure Windows security settings
+  win_regedit:
+    path: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System
+    name: "{{ item.name }}"
+    data: "{{ item.value }}"
+    type: dword
+  loop:
+    - { name: "EnableLUA", value: 1 }
+    - { name: "ConsentPromptBehaviorAdmin", value: 2 }
+    - { name: "ShutdownWithoutLogon", value: 0 }
+  when: ansible_os_family == "Windows"
+
+- name: Configure user account control (Windows)
+  win_regedit:
+    path: HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System
+    name: EnableInstallerDetection
+    data: 1
+    type: dword
+  when: ansible_os_family == "Windows"
+
+- name: Configure network security (Linux)
+  template:
+    src: hosts.allow.j2
+    dest: /etc/hosts.allow
+    owner: root
+    group: root
+    mode: '0644'
+  when: ansible_os_family != "Windows"
+
+- name: Configure network security (Linux)
+  template:
+    src: hosts.deny.j2
+    dest: /etc/hosts.deny
+    owner: root
+    group: root
+    mode: '0644'
+  when: ansible_os_family != "Windows"
+
+- name: Configure Windows network security
+  win_regedit:
+    path: HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters
+    name: EnableICMPRedirect
+    data: 0
+    type: dword
+  when: ansible_os_family == "Windows"
+
+- name: Configure log rotation (Linux)
+  template:
+    src: logrotate.conf.j2
+    dest: /etc/logrotate.d/security
+    owner: root
+    group: root
+    mode: '0644'
+  when: ansible_os_family != "Windows"
+
+- name: Configure Windows log settings
+  win_regedit:
+    path: HKLM:\SYSTEM\CurrentControlSet\Services\EventLog\System
+    name: MaxSize
+    data: 1048576
+    type: dword
+  when: ansible_os_family == "Windows"
+
+- name: Configure Windows log settings
+  win_regedit:
+    path: HKLM:\SYSTEM\CurrentControlSet\Services\EventLog\Application
+    name: MaxSize
+    data: 1048576
+    type: dword
+  when: ansible_os_family == "Windows"
+
+- name: Create security configuration file (Linux)
+  template:
+    src: security.conf.j2
+    dest: /etc/security/security.conf
+    owner: root
+    group: root
+    mode: '0644'
+  when: ansible_os_family != "Windows"
+
+- name: Create security configuration file (Windows)
+  win_template:
+    src: security.conf.j2
+    dest: C:\ProgramData\Security\security.conf
+  when: ansible_os_family == "Windows" 
